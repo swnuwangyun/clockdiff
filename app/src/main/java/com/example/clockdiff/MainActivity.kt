@@ -29,6 +29,7 @@ import java.nio.ByteOrder
 
 class MainActivity : ComponentActivity() {
     var initialTimestamps: LongArray? = null
+    var initialRtt: Long? = null
 
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); enableEdgeToEdge(); setContent { ClockdiffTheme { Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding -> NtpLogUI(modifier = Modifier.padding(innerPadding), activity = this) } } } }
     suspend fun getNtpTimestamps(server: String = "ntp.aliyun.com", port: Int = 123): LongArray = withContext(Dispatchers.IO) {
@@ -49,6 +50,7 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
     val scrollState = rememberScrollState()
     val checkpoints = listOf(1, 2, 5, 10, 20, 30, 60)
     val doneFlags = remember { mutableStateMapOf<Int, Boolean>().apply { checkpoints.forEach { put(it,false) } } }
+    val rttList = remember { mutableListOf<Pair<Long, LongArray>>() }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -57,13 +59,21 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
                 val rtt = ts[3] - ts[0]
                 logs = logs + "rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
                 if (activity.initialTimestamps == null) {
-                    activity.initialTimestamps = ts
+                    rttList.add(rtt to ts)
+                    if (rttList.size > 3) rttList.removeAt(0)
+                    if (rttList.size == 3) {
+                        val minRtt = rttList.minOf { it.first }
+                        val minEntry = rttList.first { it.first == minRtt }
+                        activity.initialTimestamps = minEntry.second
+                        activity.initialRtt = minEntry.first
+                        logs = logs + "initial rtt=${activity.initialRtt} t3=${minEntry.second[2]} t4=${minEntry.second[3]}"
+                    }
                 } else {
                     val t3start = activity.initialTimestamps!![2]
                     val t4start = activity.initialTimestamps!![3]
                     val elapsedMin = (ts[3] - t4start) / 60000.0
                     checkpoints.forEach { cp ->
-                        if (!doneFlags[cp]!! && elapsedMin >= cp) {
+                        if (!doneFlags[cp]!! && elapsedMin >= cp && activity.initialRtt != null && kotlin.math.abs(rtt - activity.initialRtt!!) <= 10) {
                             val driftMs = ((ts[3] - t4start) - (ts[2] - t3start))
                             logs = logs + "%d min drift=%d ms".format(cp, driftMs)
                             doneFlags[cp] = true
@@ -74,7 +84,7 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
             } catch (e: Exception) {
                 logs = logs + "Error: ${e.message}"
             }
-            delay(1000)
+            delay(2000) // 改成定时器2秒
         }
     }
     SelectionContainer(modifier = modifier.verticalScroll(scrollState).fillMaxSize()) { Text(text = logs.joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 12.sp) }
