@@ -51,13 +51,18 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
     val checkpoints = listOf(1, 2, 5, 10, 20, 30, 60)
     val doneFlags = remember { mutableStateMapOf<Int, Boolean>().apply { checkpoints.forEach { put(it,false) } } }
     val rttList = remember { mutableListOf<Pair<Long, LongArray>>() }
+    var counter by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         while (true) {
             try {
                 val ts = activity.getNtpTimestamps()
                 val rtt = ts[3] - ts[0]
-                logs = logs + "rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
+                counter++
+                if (counter >= 5) {
+                    logs = logs + "rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
+                    counter = 0
+                }
                 if (activity.initialTimestamps == null) {
                     rttList.add(rtt to ts)
                     if (rttList.size > 3) rttList.removeAt(0)
@@ -75,7 +80,8 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
                     checkpoints.forEach { cp ->
                         if (!doneFlags[cp]!! && elapsedMin >= cp && activity.initialRtt != null && kotlin.math.abs(rtt - activity.initialRtt!!) <= 10) {
                             val driftMs = ((ts[3] - t4start) - (ts[2] - t3start))
-                            logs = logs + "%d min drift=%d ms".format(cp, driftMs)
+                            logs = logs + "checkpoint rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
+                            logs = logs + "%d min cost=%d drift=%d ms".format(cp, (ts[3] - t4start), driftMs)
                             doneFlags[cp] = true
                         }
                     }
