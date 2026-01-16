@@ -61,7 +61,8 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
         while (true) {
             try {
                 val ts = activity.getNtpTimestamps()
-                val line = "t1=%d t2=%d t3=%d t4=%d".format(ts[0].toLong(), ts[1].toLong(), ts[2].toLong(), ts[3].toLong())
+                var rtt = ts[3] - ts[0];
+                val line = "rtt=%d t3=%d t4=%d".format(rtt.toLong(), ts[0].toLong(), ts[1].toLong(), ts[2].toLong(), ts[3].toLong())
                 logs = logs + line
                 delay(100)
                 scrollState.scrollTo(scrollState.maxValue)
