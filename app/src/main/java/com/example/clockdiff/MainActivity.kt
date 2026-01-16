@@ -33,10 +33,14 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     var initialTimestamps: LongArray? = null
     var initialRtt: Long? = null
+    private val ntpAddress: InetAddress by lazy { InetAddress.getByName("ntp.aliyun.com") }
 
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); enableEdgeToEdge(); setContent { ClockdiffTheme { Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding -> NtpLogUI(modifier = Modifier.padding(innerPadding), activity = this) } } } }
     suspend fun getNtpTimestamps(server: String = "ntp.aliyun.com", port: Int = 123): LongArray = withContext(Dispatchers.IO) {
-        val TIME_1970 = 2208988800L; val buffer = ByteArray(48); buffer[0] = 0b00100011; val address = InetAddress.getByName(server)
+        val TIME_1970 = 2208988800L;
+        val buffer = ByteArray(48);
+        buffer[0] = 0b00100011;
+        val address = ntpAddress
         DatagramSocket().use { socket -> socket.soTimeout = 5000; val t1 = SystemClock.elapsedRealtimeNanos() / 1_000_000L; val requestPacket = DatagramPacket(buffer, buffer.size, address, port); socket.send(requestPacket)
             val responseBuffer = ByteArray(48); val responsePacket = DatagramPacket(responseBuffer, responseBuffer.size); socket.receive(responsePacket); val t4 = SystemClock.elapsedRealtimeNanos() / 1_000_000L
             val bb = ByteBuffer.wrap(responseBuffer); bb.order(ByteOrder.BIG_ENDIAN)
@@ -95,7 +99,7 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
             } catch (e: Exception) {
                 logs = logs + "Error: ${e.message}"
             }
-            delay(2000) // 改成定时器2秒
+            delay(2000)
         }
     }
     SelectionContainer(modifier = modifier.verticalScroll(scrollState).fillMaxSize()) { Text(text = logs.joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 12.sp) }
