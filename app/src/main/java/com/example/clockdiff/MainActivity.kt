@@ -26,45 +26,50 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.pow
 
 class MainActivity : ComponentActivity() {
+    var initialTimestamps: LongArray? = null
+
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); enableEdgeToEdge(); setContent { ClockdiffTheme { Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding -> NtpLogUI(modifier = Modifier.padding(innerPadding), activity = this) } } } }
-    suspend fun getNtpTimestamps(server: String = "ntp.aliyun.com", port: Int = 123): DoubleArray = withContext(Dispatchers.IO) {
-        val TIME_1970 = 2208988800L
-        val buffer = ByteArray(48)
-        buffer[0] = 0b00100011
-        val address = InetAddress.getByName(server)
-        DatagramSocket().use { socket ->
-            socket.soTimeout = 5000
-            val t1 = SystemClock.elapsedRealtimeNanos() / 1_000_000.0
-            val requestPacket = DatagramPacket(buffer, buffer.size, address, port)
-            socket.send(requestPacket)
-            val responseBuffer = ByteArray(48)
-            val responsePacket = DatagramPacket(responseBuffer, responseBuffer.size)
-            socket.receive(responsePacket)
-            val t4 = SystemClock.elapsedRealtimeNanos() / 1_000_000.0
+    suspend fun getNtpTimestamps(server: String = "ntp.aliyun.com", port: Int = 123): LongArray = withContext(Dispatchers.IO) {
+        val TIME_1970 = 2208988800L; val buffer = ByteArray(48); buffer[0] = 0b00100011; val address = InetAddress.getByName(server)
+        DatagramSocket().use { socket -> socket.soTimeout = 5000; val t1 = SystemClock.elapsedRealtimeNanos() / 1_000_000L; val requestPacket = DatagramPacket(buffer, buffer.size, address, port); socket.send(requestPacket)
+            val responseBuffer = ByteArray(48); val responsePacket = DatagramPacket(responseBuffer, responseBuffer.size); socket.receive(responsePacket); val t4 = SystemClock.elapsedRealtimeNanos() / 1_000_000L
             val bb = ByteBuffer.wrap(responseBuffer); bb.order(ByteOrder.BIG_ENDIAN)
-            bb.position(32); val seconds2 = bb.int.toLong() and 0xffffffffL; val fraction2 = bb.int.toLong() and 0xffffffffL; val t2 = (seconds2 - TIME_1970 + fraction2 / (2.0.pow(32))) * 1000.0
-            bb.position(40); val seconds3 = bb.int.toLong() and 0xffffffffL; val fraction3 = bb.int.toLong() and 0xffffffffL; val t3 = (seconds3 - TIME_1970 + fraction3 / (2.0.pow(32))) * 1000.0
-            return@withContext doubleArrayOf(t1, t2, t3, t4)
+            bb.position(32); val seconds2 = bb.int.toLong() and 0xffffffffL; val fraction2 = bb.int.toLong() and 0xffffffffL; val t2 = (seconds2 - TIME_1970) * 1000L + ((fraction2 * 1000L) shr 32)
+            bb.position(40); val seconds3 = bb.int.toLong() and 0xffffffffL; val fraction3 = bb.int.toLong() and 0xffffffffL; val t3 = (seconds3 - TIME_1970) * 1000L + ((fraction3 * 1000L) shr 32)
+            return@withContext longArrayOf(t1, t2, t3, t4)
         }
     }
-    private fun Double.pow(p: Int) = this.pow(p.toDouble())
 }
 
 @Composable
 fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
     var logs by remember { mutableStateOf(listOf<String>()) }
     val scrollState = rememberScrollState()
+    val checkpoints = listOf(1, 2, 5, 10, 20, 30, 60)
+    val doneFlags = remember { mutableStateMapOf<Int, Boolean>().apply { checkpoints.forEach { put(it,false) } } }
+
     LaunchedEffect(Unit) {
         while (true) {
             try {
                 val ts = activity.getNtpTimestamps()
-                var rtt = ts[3] - ts[0];
-                val line = "rtt=%d t3=%d t4=%d".format(rtt.toLong(), ts[0].toLong(), ts[1].toLong(), ts[2].toLong(), ts[3].toLong())
-                logs = logs + line
-                delay(100)
+                val rtt = ts[3] - ts[0]
+                logs = logs + "rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
+                if (activity.initialTimestamps == null) {
+                    activity.initialTimestamps = ts
+                } else {
+                    val t3start = activity.initialTimestamps!![2]
+                    val t4start = activity.initialTimestamps!![3]
+                    val elapsedMin = (ts[3] - t4start) / 60000.0
+                    checkpoints.forEach { cp ->
+                        if (!doneFlags[cp]!! && elapsedMin >= cp) {
+                            val driftMs = ((ts[3] - t4start) - (ts[2] - t3start))
+                            logs = logs + "%d min drift=%d ms".format(cp, driftMs)
+                            doneFlags[cp] = true
+                        }
+                    }
+                }
                 scrollState.scrollTo(scrollState.maxValue)
             } catch (e: Exception) {
                 logs = logs + "Error: ${e.message}"
@@ -77,4 +82,4 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewUI() { ClockdiffTheme { Text("Preview", fontFamily = FontFamily.Monospace, fontSize = 8.sp) } }
+fun PreviewUI() { ClockdiffTheme { Text("Preview", fontFamily = FontFamily.Monospace, fontSize = 12.sp) } }
