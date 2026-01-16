@@ -26,6 +26,9 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     var initialTimestamps: LongArray? = null
@@ -54,12 +57,14 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
     var counter by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
+        val nowstr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        logs = logs + "Start Time: $nowstr"
         while (true) {
             try {
                 val ts = activity.getNtpTimestamps()
                 val rtt = ts[3] - ts[0]
                 counter++
-                if (counter >= 5) {
+                if (counter >= 10) {
                     logs = logs + "rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
                     counter = 0
                 }
