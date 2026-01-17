@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
 fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
     var logs by remember { mutableStateOf(listOf<String>()) }
     val scrollState = rememberScrollState()
-    val checkpoints = listOf(1, 2, 5, 10, 20, 30, 60)
+    val checkpoints = listOf(1, 2, 5, 10, 20, 30, 60*1, 60*2, 60*3, 60*4, 60*5, 60*6, 60*7, 60*8)
     val doneFlags = remember { mutableStateMapOf<Int, Boolean>().apply { checkpoints.forEach { put(it,false) } } }
     val rttList = remember { mutableListOf<Pair<Long, LongArray>>() }
     var counter by remember { mutableStateOf(0) }
@@ -67,11 +67,11 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
             try {
                 val ts = activity.getNtpTimestamps()
                 val rtt = ts[3] - ts[0]
-                counter++
-                if (counter >= 10) {
-                    logs = logs + "rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
-                    counter = 0
-                }
+//                counter++
+//                if (counter >= 10) {
+//                    logs = logs + "rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
+//                    counter = 0
+//                }
                 if (activity.initialTimestamps == null) {
                     rttList.add(rtt to ts)
                     if (rttList.size > 3) rttList.removeAt(0)
@@ -90,7 +90,7 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
                         if (!doneFlags[cp]!! && elapsedMin >= cp && activity.initialRtt != null && kotlin.math.abs(rtt - activity.initialRtt!!) <= 10) {
                             val driftMs = ((ts[3] - t4start) - (ts[2] - t3start))
                             logs = logs + "checkpoint rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
-                            logs = logs + "%d min cost=%d drift=%d ms".format(cp, (ts[3] - t4start), driftMs)
+                            logs = logs + "%dmin cost=%ds drift=%dms".format(cp, (ts[3] - t4start)/1000, driftMs)
                             doneFlags[cp] = true
                         }
                     }
