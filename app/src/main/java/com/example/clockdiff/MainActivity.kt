@@ -97,7 +97,7 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
                 }
 //                scrollState.scrollTo(scrollState.maxValue)
             } catch (e: Exception) {
-                logs = logs + "Error: ${e.message}"
+//                logs = logs + "Error: ${e.message}"
             }
             delay(2000)
         }
