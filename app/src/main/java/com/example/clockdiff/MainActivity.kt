@@ -67,8 +67,10 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
             try {
                 val ts = activity.getNtpTimestamps()
                 val rtt = ts[3] - ts[0]
+                if (rtt>60)
+                    continue
 //                counter++
-//                if (counter >= 10) {
+//                if (counter >= 0) {
 //                    logs = logs + "rtt=$rtt t3=${ts[2]} t4=${ts[3]}"
 //                    counter = 0
 //                }
