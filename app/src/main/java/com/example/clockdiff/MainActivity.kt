@@ -2,6 +2,7 @@ package com.example.clockdiff
 
 import android.os.Bundle
 import android.os.SystemClock
+import android.content.pm.ActivityInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -35,7 +36,7 @@ class MainActivity : ComponentActivity() {
     var initialRtt: Long? = null
     private val ntpAddress: InetAddress by lazy { InetAddress.getByName("ntp.aliyun.com") }
 
-    override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); enableEdgeToEdge(); setContent { ClockdiffTheme { Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding -> NtpLogUI(modifier = Modifier.padding(innerPadding), activity = this) } } } }
+    override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; enableEdgeToEdge(); setContent { ClockdiffTheme { Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding -> NtpLogUI(modifier = Modifier.padding(innerPadding), activity = this) } } } }
     suspend fun getNtpTimestamps(server: String = "ntp.aliyun.com", port: Int = 123): LongArray = withContext(Dispatchers.IO) {
         val TIME_1970 = 2208988800L;
         val buffer = ByteArray(48);
