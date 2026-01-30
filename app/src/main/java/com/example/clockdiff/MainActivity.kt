@@ -2,6 +2,7 @@ package com.example.clockdiff
 
 import android.os.Bundle
 import android.os.SystemClock
+import android.os.Build
 import android.content.pm.ActivityInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -63,7 +64,9 @@ fun NtpLogUI(modifier: Modifier = Modifier, activity: MainActivity) {
 
     LaunchedEffect(Unit) {
         val nowstr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-        logs = logs + "Start Time: $nowstr"
+        val deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
+        logs = logs + "start time: $nowstr"
+        logs = logs + "device: $deviceModel"
         while (true) {
             try {
                 val ts = activity.getNtpTimestamps()
